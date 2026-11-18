@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+*.db
+*.sqlite
+*.log
+__pycache__
+*.pyc
+.pytest_cache
+*private*.pem
+!license_server/keys/ed25519_public.pem

@@ -1,0 +1,42 @@
+# Python & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Environment Variables & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+*.pem
+!license_server/keys/ed25519_public.pem
+*private*
+*.key
+
+# Database & Runtime
+*.db
+*.sqlite
+*.sqlite3
+license_server/*.db
+alembic/*.db
+
+# Logs & Diagnostics
+*.log
+logs/
+runtime/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
