@@ -142,7 +142,12 @@ def reset_device_trial(
     """Allows admin to reset trial history for a legitimate customer machine replacement."""
     service = LicenseService(db)
     try:
-        service.reset_device_trial(req.device_fingerprint_hash, req.reason or "Admin reset", actor=admin.username)
+        service.reset_device_trial(
+            device_fingerprint_hash=req.device_fingerprint_hash,
+            license_id=req.license_id,
+            reason=req.reason or "Admin reset",
+            actor=admin.username
+        )
         return {"status": "success", "message": "Device trial history cleared."}
     except LicenseServiceError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

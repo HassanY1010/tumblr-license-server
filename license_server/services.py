@@ -365,20 +365,45 @@ class LicenseService:
         self.db.commit()
         return True
 
-    def reset_device_trial(self, device_fingerprint_hash: str, reason: str, actor: str = "admin") -> bool:
-        dev = self.db.query(Device).filter(Device.device_fingerprint_hash == device_fingerprint_hash).first()
+    def reset_device_trial(
+        self,
+        device_fingerprint_hash: Optional[str] = None,
+        license_id: Optional[int] = None,
+        reason: str = "Admin reset",
+        actor: str = "admin"
+    ) -> bool:
+        dev = None
+        if device_fingerprint_hash:
+            dev = self.db.query(Device).filter(Device.device_fingerprint_hash == device_fingerprint_hash).first()
+        elif license_id:
+            lic = self.db.query(License).filter(License.id == license_id).first()
+            if not lic:
+                raise LicenseServiceError("License not found", 404)
+            if lic.activations:
+                dev = lic.activations[0].device
+            else:
+                raise LicenseServiceError("No device registered with this license yet", 400)
+
         if not dev:
-            raise LicenseServiceError("Device not found", 404)
-        trial_hist = self.db.query(DeviceTrialHistory).filter(DeviceTrialHistory.device_id == dev.id).first()
-        if trial_hist:
-            self.db.delete(trial_hist)
+            raise LicenseServiceError("Device not found for trial reset", 404)
+
+        trial_hists = self.db.query(DeviceTrialHistory).filter(DeviceTrialHistory.device_id == dev.id).all()
+        for th in trial_hists:
+            self.db.delete(th)
+
+        for act in dev.activations:
+            if act.status == ActivationStatus.ACTIVE.value:
+                act.status = ActivationStatus.EXPIRED.value
+            if act.license and act.license.status == LicenseStatus.USED.value:
+                act.license.status = LicenseStatus.EXPIRED.value
+
         self.db.add(AuditLog(
             actor=actor,
             action="RESET_DEVICE_TRIAL",
             target_type="DEVICE",
             target_id=str(dev.id),
             timestamp=utcnow(),
-            details_json=json.dumps({"reason": reason, "fingerprint": device_fingerprint_hash})
+            details_json=json.dumps({"reason": reason, "license_id": license_id, "fingerprint": dev.device_fingerprint_hash})
         ))
         self.db.commit()
         return True

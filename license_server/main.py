@@ -346,6 +346,16 @@ def admin_portal():
                     remText = mins > 0 ? `${mins} دقيقة` : 'انتهى الوقت';
                 }
 
+                let actionsHtml = '';
+                if (l.status !== 'REVOKED') {
+                    actionsHtml += `<button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px; margin-left: 4px;" onclick="revokeKey(${l.id})">إلغاء الترخيص</button>`;
+                } else {
+                    actionsHtml += `<span style="color: var(--muted); margin-left: 6px; font-size: 11px;">ملغي</span>`;
+                }
+                if (l.device_fingerprint_prefix && l.device_fingerprint_prefix !== '-') {
+                    actionsHtml += `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px;" title="تصفير قيد التجربة لهذا الجهاز للسماح له بتفعيل كود تجريبي جديد" onclick="resetDeviceTrial(${l.id})">السماح بتجربة جديدة 🔄</button>`;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>#${l.id}</td>
@@ -356,9 +366,7 @@ def admin_portal():
                     <td>${l.activated_at ? l.activated_at.slice(0, 19).replace('T', ' ') : 'لم يفعل بعد'}</td>
                     <td><b style="color: #38BDF8;">${remText}</b></td>
                     <td><code>${l.device_fingerprint_prefix || '-'}</code></td>
-                    <td>
-                        ${l.status !== 'REVOKED' ? `<button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;" onclick="revokeKey(${l.id})">إلغاء الترخيص</button>` : '<span style="color: var(--muted);">ملغي</span>'}
-                    </td>
+                    <td>${actionsHtml}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -391,6 +399,29 @@ def admin_portal():
                 loadLicenses();
             } else {
                 alert(data.detail || 'حدث خطأ أثناء توليد المفاتيح');
+            }
+        }
+
+        async function resetDeviceTrial(id) {
+            if (!confirm(`هل أنت متأكد من رغبتك في السماح لهذا الجهاز بفترة تجريبية جديدة؟\n\nسيتم إزالة قيد التجربة عن هذا الجهاز حتى يتمكن العميل من إدخال وتفعيل سيريال تجريبي جديد.`)) return;
+            try {
+                const res = await fetch('/api/v1/admin/devices/reset-trial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({license_id: id, reason: 'السماح بتجربة جديدة من لوحة الإدارة'})
+                });
+                const d = await res.json();
+                if (res.ok) {
+                    alert('✅ تم بنجاح! تم فك قيد التجربة عن هذا الجهاز.\n\nيمكن للعميل الآن إدخال السيريال التجريبي الجديد وتفعيله فوراً.');
+                    loadLicenses();
+                } else {
+                    alert(d.detail || 'فشل تصفير سجل التجربة للجهاز');
+                }
+            } catch(e) {
+                alert('خطأ في الاتصال بالخادم');
             }
         }
 

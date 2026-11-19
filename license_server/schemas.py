@@ -103,7 +103,8 @@ class RevokeRequest(BaseModel):
 
 
 class ResetDeviceRequest(BaseModel):
-    device_fingerprint_hash: str
+    device_fingerprint_hash: Optional[str] = None
+    license_id: Optional[int] = None
     reason: Optional[str] = "Admin authorized device reset"
 
 
