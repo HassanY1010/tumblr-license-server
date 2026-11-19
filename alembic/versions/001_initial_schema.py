@@ -76,7 +76,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('device_id', sa.Integer(), nullable=False),
         sa.Column('first_trial_started_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('trial_consumed', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+        sa.Column('trial_consumed', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(['device_id'], ['devices.id'], ),
         sa.PrimaryKeyConstraint('id')
@@ -91,7 +91,7 @@ def upgrade() -> None:
         sa.Column('username', sa.String(length=50), nullable=False),
         sa.Column('password_hash', sa.String(length=128), nullable=False),
         sa.Column('role', sa.String(length=20), nullable=False, server_default='admin'),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )

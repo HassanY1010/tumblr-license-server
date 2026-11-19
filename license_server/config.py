@@ -3,22 +3,25 @@
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parent
 
 
 def get_normalized_database_url() -> str:
-    """Retrieves and normalizes DATABASE_URL for SQLAlchemy 2.0 and PostgreSQL."""
+    """Retrieves and normalizes DATABASE_URL for SQLAlchemy 2.0 and PostgreSQL via psycopg2."""
     raw_url = (
         os.getenv("DATABASE_URL")
         or os.getenv("LICENSE_DATABASE_URL")
         or f"sqlite:///{BASE_DIR / 'license_server.db'}"
     )
-    # Railway PostgreSQL injects postgres:// which SQLAlchemy 2.0 rejects
+    # Railway PostgreSQL injects postgres:// or postgresql:// without explicit driver
     if raw_url.startswith("postgres://"):
-        raw_url = raw_url.replace("postgres://", "postgresql://", 1)
+        raw_url = raw_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif raw_url.startswith("postgresql://") and not raw_url.startswith("postgresql+"):
+        raw_url = raw_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     return raw_url
 
 
@@ -31,6 +34,16 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = get_normalized_database_url()
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: Any) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif v.startswith("postgresql://") and not v.startswith("postgresql+"):
+                return v.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return v
 
     # Security Secrets
     SERVER_HMAC_SECRET: str = os.getenv(

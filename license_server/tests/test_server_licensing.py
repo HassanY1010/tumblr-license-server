@@ -8,7 +8,10 @@ from fastapi.testclient import TestClient
 
 from license_server.main import app
 from license_server.database import init_license_db, SessionLocal
-from license_server.models import License, Device, Activation, DeviceTrialHistory, LicenseStatus, AdminUser
+from license_server.models import (
+    License, Device, Activation, DeviceTrialHistory, LicenseStatus,
+    AdminUser, AdminLockoutEntry, RateLimitEntry
+)
 from license_server.crypto import hash_serial_key, verify_payload_signature, hash_password, get_or_generate_ed25519_keys
 from license_server.services import LicenseService
 
@@ -20,6 +23,9 @@ def setup_db():
     init_license_db()
     get_or_generate_ed25519_keys()
     db = SessionLocal()
+    # Clean rate limiter state for clean test isolation
+    db.query(AdminLockoutEntry).delete()
+    db.query(RateLimitEntry).delete()
     admin = db.query(AdminUser).filter(AdminUser.username == "admin").first()
     if not admin:
         admin = AdminUser(
@@ -29,7 +35,7 @@ def setup_db():
             is_active=True
         )
         db.add(admin)
-        db.commit()
+    db.commit()
     db.close()
     yield
 
