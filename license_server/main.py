@@ -7,6 +7,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from license_server.config import settings
 from license_server.database import init_license_db, get_db, SessionLocal
@@ -50,7 +51,10 @@ async def lifespan(app: FastAPI):
                 is_active=True
             )
             db.add(admin_user)
-            db.commit()
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
     finally:
         db.close()
         
