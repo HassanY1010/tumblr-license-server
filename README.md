@@ -34,6 +34,15 @@ Provides cryptographic serial key generation, hardware binding (MachineGuid + Vo
 
 ---
 
+## 🌐 Production URLs
+
+- **Live Server URL:** `https://tumblr-license-server-production.up.railway.app`
+- **Admin Dashboard:** `https://tumblr-license-server-production.up.railway.app/admin`
+- **Health Check:** `https://tumblr-license-server-production.up.railway.app/api/v1/health`
+- **API Documentation:** `https://tumblr-license-server-production.up.railway.app/docs`
+
+---
+
 ## 🌐 Endpoints
 
 - **Root Redirect:** `/` → Redirects to `/admin`
