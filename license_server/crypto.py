@@ -24,18 +24,37 @@ SERIAL_CHARSET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 SERIAL_LENGTH = 10
 
 
-def _load_private_key_bytes(raw: str) -> bytes:
-    """Normalizes raw string or base64 into PEM bytes."""
-    raw_stripped = raw.strip()
-    if "-----BEGIN" in raw_stripped:
-        return raw_stripped.encode("utf-8")
+def _load_private_key_from_env(raw: str) -> ed25519.Ed25519PrivateKey:
+    """Robustly normalizes raw string, escaped newlines, Base64, or PKCS8 into an Ed25519 private key."""
+    clean = raw.strip()
+    if len(clean) >= 2 and clean[0] in ('"', "'") and clean[-1] in ('"', "'"):
+        clean = clean[1:-1].strip()
+
+    if '\\n' in clean and '\n' not in clean:
+        clean = clean.replace('\\n', '\n')
+
+    if '-----BEGIN' in clean:
+        key = serialization.load_pem_private_key(clean.encode('utf-8'), password=None)
+        if isinstance(key, ed25519.Ed25519PrivateKey):
+            return key
+        raise ValueError("Key is not an Ed25519 private key")
+
     try:
-        decoded = base64.b64decode(raw_stripped)
-        if b"-----BEGIN" in decoded:
-            return decoded
+        decoded = base64.b64decode(clean)
+        if b'-----BEGIN' in decoded:
+            key = serialization.load_pem_private_key(decoded, password=None)
+            if isinstance(key, ed25519.Ed25519PrivateKey):
+                return key
+        try:
+            key = serialization.load_der_private_key(decoded, password=None)
+            if isinstance(key, ed25519.Ed25519PrivateKey):
+                return key
+        except Exception:
+            pass
     except Exception:
         pass
-    return raw_stripped.encode("utf-8")
+
+    raise ValueError("Could not deserialize ED25519_PRIVATE_KEY from environment.")
 
 
 _ephemeral_dev_keypair: Optional[Tuple[ed25519.Ed25519PrivateKey, bytes]] = None
@@ -53,8 +72,7 @@ def get_or_generate_ed25519_keys(keys_dir: Optional[Path] = None) -> Tuple[ed255
     # Priority 1: Secure Environment Variable (Recommended for Railway & Cloud)
     env_priv = os.getenv("ED25519_PRIVATE_KEY") or settings.ED25519_PRIVATE_KEY
     if env_priv and env_priv.strip():
-        key_bytes = _load_private_key_bytes(env_priv)
-        private_key = serialization.load_pem_private_key(key_bytes, password=None)
+        private_key = _load_private_key_from_env(env_priv)
         public_key = private_key.public_key()
         pub_pem = public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
